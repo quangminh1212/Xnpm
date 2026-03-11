@@ -45,6 +45,20 @@ const packageManagerCommands = {
 const isKnownPackageManager = (value: string): value is KnownPackageManager =>
   value === "npm" || value === "pnpm" || value === "yarn" || value === "bun";
 
+const resolveExecutable = (command: string) => {
+  if (os.platform() !== "win32") {
+    return command;
+  }
+
+  if (command === "npm" || command === "pnpm" || command === "yarn" || command === "bun") {
+    return `${command}.cmd`;
+  }
+
+  return command;
+};
+
+const shouldUseShell = (command: string) => os.platform() === "win32" && command.endsWith(".cmd");
+
 const resolveProcessCommand = (packageDetail: PackageDetail, action: ActionRequest) => {
   const packageManager = isKnownPackageManager(packageDetail.packageManager)
     ? packageDetail.packageManager
@@ -76,16 +90,17 @@ export const runAction = async (packageDetail: PackageDetail, action: ActionRequ
   }
 
   const { command, args } = resolveProcessCommand(packageDetail, action);
+  const executable = resolveExecutable(command);
   const startedAt = new Date().toISOString();
 
-  writeLog("action", `Starting ${command} ${args.join(" ")} in ${packageDetail.absolutePath}`);
+  writeLog("action", `Starting ${executable} ${args.join(" ")} in ${packageDetail.absolutePath}`);
 
   const result = await new Promise<ActionResult>((resolve, reject) => {
-    const child: ChildProcessWithoutNullStreams = spawn(command, args, {
+    const child: ChildProcessWithoutNullStreams = spawn(executable, args, {
       cwd: packageDetail.absolutePath,
       env: process.env,
       stdio: "pipe",
-      shell: false
+      shell: shouldUseShell(executable)
     });
 
     let stdout = "";
@@ -105,7 +120,7 @@ export const runAction = async (packageDetail: PackageDetail, action: ActionRequ
 
     child.on("close", (code: number | null) => {
       resolve({
-        command: [command, ...args].join(" "),
+        command: [executable, ...args].join(" "),
         exitCode: code ?? 0,
         stdout: stdout.trim(),
         stderr: stderr.trim(),

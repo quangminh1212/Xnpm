@@ -21,7 +21,12 @@ const actionSchema = z.discriminatedUnion("type", [
 
 export const createServer = async () => {
   const server = Fastify({
-    logger: false
+    logger: false,
+    routerOptions: {
+      // Package IDs are base64url-encoded absolute paths and can easily exceed
+      // the default router param limit on Windows when workspaces are nested deeply.
+      maxParamLength: 512
+    }
   });
 
   await server.register(cors, { origin: true });
