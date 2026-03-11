@@ -1,7 +1,6 @@
 {
-  "name": "xnpm",
+  "name": "@xlabglobal/xnpm",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "description": "Local-first npm package management workspace for discovering, inspecting and operating Node.js packages on your machine.",
   "scripts": {
@@ -11,9 +10,16 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "node -e \"require('node:fs').rmSync('dist/server', { recursive: true, force: true })\" && tsc -p tsconfig.server.json",
+    "prepack": "npm run build",
     "start": "node dist/server/index.js",
     "lint": "eslint .",
     "test": "vitest run"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=22.0.0",
