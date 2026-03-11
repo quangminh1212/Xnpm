@@ -84,6 +84,17 @@ npm run start
 - File log runtime: `logs/xnpm-dev.log`
 - File này được ignore trong git để không làm bẩn lịch sử commit
 
+## Tương thích hệ điều hành
+
+- Đã thiết kế để chạy trên Windows, Linux và macOS với cùng codebase Node.js/React/Fastify
+- Build, test, lint và scan package dùng Node API + npm scripts, tránh phụ thuộc trực tiếp vào Bash hoặc PowerShell
+- Thao tác `open folder` tự chọn lệnh phù hợp theo nền tảng:
+  - Windows: `explorer`
+  - macOS: `open`
+  - Linux: ưu tiên `xdg-open`, fallback sang `gio open`, `gnome-open`, `kde-open`
+- Có thể override lệnh mở thư mục bằng biến môi trường `XNPM_OPEN_FOLDER_COMMAND` nếu máy dùng launcher khác
+- Có thể override thư mục runtime bằng `XNPM_RUNTIME_DIR` và danh sách root gợi ý bằng `XNPM_SUGGESTED_ROOTS`
+
 ## Tiêu chuẩn chất lượng
 
 - TypeScript strict mode
