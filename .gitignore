@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.vite/
+logs/
+*.log
+data/runtime/
+data/*.json
+!.gitkeep
