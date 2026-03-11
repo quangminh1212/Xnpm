@@ -75,6 +75,11 @@ type ActionPayload = {
   };
 };
 
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 const fetchJson = async <T,>(input: string, init?: RequestInit) => {
   const response = await fetch(input, {
     headers: {
@@ -120,8 +125,43 @@ const App = () => {
   const [newRoot, setNewRoot] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<PackageStatus | "all">("all");
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandaloneMode, setIsStandaloneMode] = useState(false);
 
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+    const syncStandaloneMode = () => {
+      const navigatorWithStandalone = window.navigator as Navigator & { standalone?: boolean };
+      setIsStandaloneMode(mediaQuery.matches || navigatorWithStandalone.standalone === true);
+    };
+
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+
+    const handleInstalled = () => {
+      setInstallPrompt(null);
+      syncStandaloneMode();
+    };
+
+    syncStandaloneMode();
+    mediaQuery.addEventListener("change", syncStandaloneMode);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+
+    return () => {
+      mediaQuery.removeEventListener("change", syncStandaloneMode);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+  }, []);
 
   const reloadRoots = async () => {
     setRootsPayload(await fetchJson<RootPayload>("/api/roots"));
@@ -246,6 +286,20 @@ const App = () => {
     setIsRefreshing(false);
   };
 
+  const installApplication = async () => {
+    if (!installPrompt) {
+      return;
+    }
+
+    await installPrompt.prompt();
+    const choice = await installPrompt.userChoice;
+
+    if (choice.outcome === "accepted") {
+      setInstallPrompt(null);
+      setIsStandaloneMode(true);
+    }
+  };
+
   const triggerAction = async (
     payload: { type: "install" } | { type: "open-folder" } | { type: "script"; scriptName: string }
   ) => {
@@ -336,7 +390,7 @@ const App = () => {
               onChange={(event) => {
                 setNewRoot(event.target.value);
               }}
-              placeholder="Add folder path, for example C:\Dev"
+              placeholder={"Add folder path, for example ~/Projects or C:\\Dev"}
               value={newRoot}
             />
             <button
@@ -399,6 +453,27 @@ const App = () => {
           <p className="mini-copy">
             Action traces are written to <code>{meta?.logFilePath ?? "logs/xnpm-dev.log"}</code>.
           </p>
+          <p className="mini-copy" style={{ marginTop: 10 }}>
+            Desktop-like mode chạy bằng web app standalone nên giữ cùng một codebase cho Windows, macOS và Linux.
+          </p>
+          {installPrompt ? (
+            <button
+              className="primary-button"
+              onClick={() => {
+                void installApplication();
+              }}
+              style={{ marginTop: 14, width: "100%" }}
+              type="button"
+            >
+              <ExternalLink size={16} />
+              Install app
+            </button>
+          ) : null}
+          {isStandaloneMode ? (
+            <div style={{ marginTop: 14 }}>
+              <span className="pill pill--healthy">Standalone mode active</span>
+            </div>
+          ) : null}
         </section>
       </aside>
 

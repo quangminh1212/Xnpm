@@ -38,6 +38,16 @@ export type PackageDetail = PackageSummary & {
   description: string;
 };
 
+const suggestedHomeDirectories = [
+  "Projects",
+  "Code",
+  "Dev",
+  "Documents",
+  path.join("source", "repos"),
+  "workspace",
+  "workspaces"
+];
+
 type CatalogCache = {
   packages: PackageDetail[];
   roots: string[];
@@ -247,14 +257,17 @@ const scanRoots = async (roots: string[]) => {
 };
 
 export const getSuggestedRoots = async () => {
+  const configuredCandidates = (process.env.XNPM_SUGGESTED_ROOTS ?? "")
+    .split(path.delimiter)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
   const candidates = unique(
     [
       process.cwd(),
       path.dirname(process.cwd()),
-      path.join(os.homedir(), "Projects"),
-      path.join(os.homedir(), "Documents"),
-      path.join(os.homedir(), "source", "repos"),
-      "C:\\Dev"
+      ...configuredCandidates,
+      ...suggestedHomeDirectories.map((directoryName) => path.join(os.homedir(), directoryName))
     ].map(normalizeDirectory)
   );
 
